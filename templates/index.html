@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gesture Recognition System — Mahesh Bhardwaj</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --panel: #111118;
+    --border: #1e1e2e;
+    --accent: #00ff88;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --danger: #ef4444;
+    --glow: 0 0 20px rgba(0,255,136,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid bg */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: var(--glow);
+    animation: pulse-icon 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-icon {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,255,136,0.2); }
+    50% { box-shadow: 0 0 40px rgba(0,255,136,0.5); }
+  }
+
+  .logo h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .logo span {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.2);
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: blink 1.5s ease infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Main Grid */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto auto;
+    gap: 20px;
+  }
+
+  /* Video Feed */
+  .video-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    grid-row: 1 / 3;
+  }
+
+  .video-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .video-header h2 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .fps-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent3);
+    background: rgba(245,158,11,0.1);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(245,158,11,0.2);
+  }
+
+  .video-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #000;
+    overflow: hidden;
+  }
+
+  #videoFeed {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Gesture overlay on video */
+  .gesture-overlay {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 12px;
+    padding: 10px 16px;
+  }
+
+  .gesture-overlay .gesture-emoji {
+    font-size: 2rem;
+    display: block;
+    text-align: center;
+  }
+
+  /* Right panels */
+  .gesture-main-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .big-gesture {
+    text-align: center;
+    padding: 24px;
+    background: rgba(0,255,136,0.04);
+    border: 1px solid rgba(0,255,136,0.1);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .big-gesture.active {
+    background: rgba(0,255,136,0.08);
+    border-color: rgba(0,255,136,0.3);
+    box-shadow: var(--glow);
+  }
+
+  .big-gesture-emoji {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 8px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .big-gesture.active .big-gesture-emoji {
+    transform: scale(1.1);
+  }
+
+  .big-gesture-name {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+  }
+
+  .big-gesture-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    margin-top: 4px;
+  }
+
+  /* Confidence bar */
+  .confidence-section label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .confidence-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 100px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0%;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Bottom panels */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 0;
+  }
+
+  /* History panel */
+  .history-panel, .stats-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+  }
+
+  .panel-title {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-size: 0.85rem;
+    animation: slideIn 0.3s ease;
+    transition: all 0.2s;
+  }
+
+  .history-item:first-child {
+    background: rgba(0,255,136,0.06);
+    border-color: rgba(0,255,136,0.15);
+    color: var(--accent);
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .history-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    width: 18px;
+  }
+
+  /* Stats chart */
+  .stats-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .stat-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+  }
+
+  .stat-bar-label {
+    width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+
+  .stat-bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--border);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .stat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 100px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .stat-bar-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    width: 30px;
+    text-align: right;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Gesture guide */
+  .guide-section {
+    margin-top: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+  }
+
+  .gesture-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .gesture-chip {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+    transition: all 0.2s;
+    cursor: default;
+  }
+
+  .gesture-chip:hover {
+    background: rgba(0,255,136,0.06);
+    border-color: rgba(0,255,136,0.2);
+    transform: translateY(-2px);
+  }
+
+  .gesture-chip .emoji { font-size: 1.8rem; display: block; }
+  .gesture-chip .name { font-size: 0.65rem; color: var(--muted); margin-top: 4px; }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .video-panel { grid-row: auto; }
+    .gesture-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🖐️</div>
+      <div>
+        <h1>Gesture Recognition System</h1>
+        <span>by Mahesh Bhardwaj — Real-time Hand Tracking</span>
+      </div>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      LIVE
+    </div>
+  </header>
+
+  <div class="main-grid">
+    <!-- Video Feed -->
+    <div class="video-panel">
+      <div class="video-header">
+        <h2>📷 Camera Feed</h2>
+        <div class="fps-badge" id="fpsBadge">⚡ -- FPS</div>
+      </div>
+      <div class="video-wrapper">
+        <img id="videoFeed" src="/video_feed" alt="Camera Feed">
+      </div>
+    </div>
+
+    <!-- Right: Gesture Panel -->
+    <div class="gesture-main-panel">
+      <div>
+        <div class="panel-title">Current Gesture</div>
+        <div class="big-gesture" id="bigGesture">
+          <span class="big-gesture-emoji" id="gestureEmoji">🤔</span>
+          <div class="big-gesture-name" id="gestureName">Waiting...</div>
+          <div class="big-gesture-sub" id="gestureSub">Show your hand to camera</div>
+        </div>
+      </div>
+
+      <div class="confidence-section">
+        <label>
+          <span>Confidence</span>
+          <span id="confValue">0%</span>
+        </label>
+        <div class="confidence-track">
+          <div class="confidence-fill" id="confFill"></div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="handCount">0</div>
+          <div class="stat-label">Hands Detected</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalGestures">0</div>
+          <div class="stat-label">Gestures Done</div>
+        </div>
+      </div>
+
+      <!-- Face Expression Section -->
+      <div style="border-top: 1px solid var(--border); padding-top: 18px;">
+        <div class="panel-title">Face Analysis</div>
+        <div class="big-gesture" id="facePanel" style="margin-bottom:12px;">
+          <span class="big-gesture-emoji" id="faceEmoji">😶</span>
+          <div class="big-gesture-name" id="faceName">No Face Detected</div>
+          <div class="big-gesture-sub" id="faceSub">Look at the camera</div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" style="font-size:1.3rem;" id="faceAge">--</div>
+            <div class="stat-label">Age (Est.)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" style="font-size:1.1rem;" id="faceGender">--</div>
+            <div class="stat-label">Gender</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom row -->
+  <div class="bottom-grid" style="margin-top:20px">
+    <!-- History -->
+    <div class="history-panel">
+      <div class="panel-title">Gesture History</div>
+      <div class="history-list" id="historyList">
+        <div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:20px">
+          No gestures yet — show your hand! 👋
+        </div>
+      </div>
+    </div>
+
+    <!-- Session Stats -->
+    <div class="stats-panel">
+      <div class="panel-title">Session Stats</div>
+      <div class="stats-bars" id="statsBars">
+        <div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:20px">
+          Stats will appear as you use gestures
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gesture Guide -->
+  <div class="guide-section">
+    <div class="panel-title">Gesture Reference Guide</div>
+    <div class="gesture-grid">
+      <div class="gesture-chip"><span class="emoji">✊</span><div class="name">Fist</div></div>
+      <div class="gesture-chip"><span class="emoji">🖐️</span><div class="name">Open Hand</div></div>
+      <div class="gesture-chip"><span class="emoji">👍</span><div class="name">Thumbs Up</div></div>
+      <div class="gesture-chip"><span class="emoji">✌️</span><div class="name">Peace</div></div>
+      <div class="gesture-chip"><span class="emoji">☝️</span><div class="name">Point Up</div></div>
+      <div class="gesture-chip"><span class="emoji">🤙</span><div class="name">Call Me</div></div>
+      <div class="gesture-chip"><span class="emoji">🤘</span><div class="name">Rock On</div></div>
+      <div class="gesture-chip"><span class="emoji">🖖</span><div class="name">Four Fingers</div></div>
+      <div class="gesture-chip"><span class="emoji">🤞</span><div class="name">Three Fingers</div></div>
+      <div class="gesture-chip"><span class="emoji">🤟</span><div class="name">Three Middle</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let totalGestureCount = 0;
+  let lastGesture = '';
+
+  async function fetchGestureData() {
+    try {
+      const res = await fetch('/gesture_data');
+      const data = await res.json();
+
+      // FPS
+      document.getElementById('fpsBadge').textContent = `⚡ ${data.fps} FPS`;
+
+      // Current gesture
+      const gesture = data.current_gesture;
+      const isActive = gesture !== 'No Hand Detected';
+      const bigEl = document.getElementById('bigGesture');
+
+      bigEl.classList.toggle('active', isActive);
+
+      // Extract emoji and name
+      const parts = gesture.split(' ');
+      const emoji = isActive ? (parts[0] || '🖐️') : '👋';
+      const name = isActive ? parts.slice(1).join(' ') : 'No Hand Detected';
+
+      document.getElementById('gestureEmoji').textContent = emoji;
+      document.getElementById('gestureName').textContent = name;
+      document.getElementById('gestureSub').textContent = isActive
+        ? `Confidence: ${data.confidence}%`
+        : 'Show your hand to the camera';
+
+      // Confidence bar
+      document.getElementById('confValue').textContent = `${data.confidence}%`;
+      document.getElementById('confFill').style.width = `${data.confidence}%`;
+
+      // Hand count
+      document.getElementById('handCount').textContent = data.hand_count;
+
+      // Face expression update
+      const faceExp = data.face_expression || 'No Face Detected';
+      const faceActive = faceExp !== 'No Face Detected';
+      const faceParts = faceExp.split(' ');
+      const faceEmoji = faceActive ? faceParts[0] : '😶';
+      const faceNameText = faceActive ? faceParts.slice(1).join(' ') : 'No Face Detected';
+      document.getElementById('faceEmoji').textContent = faceEmoji;
+      document.getElementById('faceName').textContent = faceNameText;
+      document.getElementById('faceSub').textContent = faceActive ? 'Confidence: ' + data.face_confidence + '%' : 'Look at the camera';
+      document.getElementById('facePanel').classList.toggle('active', faceActive);
+      document.getElementById('faceAge').textContent = data.age || '--';
+      document.getElementById('faceGender').textContent = data.gender || '--';
+
+      // Count gestures
+      if (isActive && gesture !== lastGesture) {
+        totalGestureCount++;
+        lastGesture = gesture;
+        document.getElementById('totalGestures').textContent = totalGestureCount;
+      }
+      if (!isActive) lastGesture = '';
+
+      // History
+      const histList = document.getElementById('historyList');
+      const history = (data.gesture_history || []).slice().reverse();
+      if (history.length > 0) {
+        histList.innerHTML = history.map((g, i) => `
+          <div class="history-item">
+            <span class="history-num">${String(i + 1).padStart(2, '0')}</span>
+            <span>${g}</span>
+          </div>
+        `).join('');
+      }
+
+      // Session stats bars
+      const statsEl = document.getElementById('statsBars');
+      const stats = data.session_stats || {};
+      const entries = Object.entries(stats);
+      if (entries.length > 0) {
+        const maxVal = Math.max(...entries.map(e => e[1]));
+        statsEl.innerHTML = entries.map(([name, count]) => `
+          <div class="stat-bar-item">
+            <div class="stat-bar-label">${name}</div>
+            <div class="stat-bar-track">
+              <div class="stat-bar-fill" style="width: ${(count / maxVal * 100).toFixed(1)}%"></div>
+            </div>
+            <div class="stat-bar-count">${count}</div>
+          </div>
+        `).join('');
+      }
+
+    } catch (e) {
+      console.log('Fetch error:', e);
+    }
+  }
+
+  // Poll every 200ms
+  setInterval(fetchGestureData, 200);
+  fetchGestureData();
+</script>
+
+</body>
+</html>
