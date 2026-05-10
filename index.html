@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gesture & Face Expression System — Mahesh Bhardwaj</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --panel: #111118;
+  --border: #1e1e2e;
+  --accent: #00ff88;
+  --accent2: #7c3aed;
+  --accent3: #f59e0b;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --glow: 0 0 20px rgba(0,255,136,0.15);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+.container { position: relative; z-index: 1; max-width: 1300px; margin: 0 auto; padding: 20px; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  font-size: 22px; box-shadow: var(--glow);
+  animation: pulse-icon 3s ease-in-out infinite;
+}
+@keyframes pulse-icon {
+  0%,100% { box-shadow: 0 0 20px rgba(0,255,136,0.2); }
+  50% { box-shadow: 0 0 40px rgba(0,255,136,0.5); }
+}
+.logo h1 { font-size: 1.2rem; font-weight: 800; }
+.logo span { display: block; font-size: 0.7rem; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 2px; }
+.status-badge {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2);
+  padding: 6px 14px; border-radius: 100px; font-size: 0.75rem;
+  font-family: 'Space Mono', monospace; color: var(--accent);
+}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: blink 1.5s ease infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.main-grid { display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
+
+/* Video */
+.video-panel {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 20px; overflow: hidden;
+}
+.video-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.video-header h2 { font-size: 0.8rem; font-weight: 600; font-family: 'Space Mono', monospace; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.fps-badge { font-family: 'Space Mono', monospace; font-size: 0.75rem; color: var(--accent3); background: rgba(245,158,11,0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(245,158,11,0.2); }
+.video-wrapper { position: relative; width: 100%; background: #000; }
+#videoEl { width: 100%; display: block; border-radius: 0 0 0 0; transform: scaleX(-1); }
+#canvasEl { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); }
+
+.start-overlay {
+  position: absolute; inset: 0; background: rgba(10,10,15,0.9);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; cursor: pointer; transition: opacity 0.3s;
+}
+.start-overlay .big-emoji { font-size: 4rem; animation: float 2s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+.start-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #000; font-weight: 800; font-size: 1rem; padding: 14px 32px;
+  border: none; border-radius: 100px; cursor: pointer;
+  font-family: 'Syne', sans-serif; letter-spacing: 0.5px;
+  transition: transform 0.2s; box-shadow: var(--glow);
+}
+.start-btn:hover { transform: scale(1.05); }
+.start-overlay p { color: var(--muted); font-size: 0.85rem; font-family: 'Space Mono', monospace; }
+
+/* Right panel */
+.right-panel { display: flex; flex-direction: column; gap: 14px; }
+
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 20px; padding: 18px;
+}
+.panel-title {
+  font-size: 0.7rem; color: var(--muted); font-family: 'Space Mono', monospace;
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.big-gesture {
+  text-align: center; padding: 18px;
+  background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1);
+  border-radius: 14px; transition: all 0.3s ease;
+}
+.big-gesture.active { background: rgba(0,255,136,0.08); border-color: rgba(0,255,136,0.3); box-shadow: var(--glow); }
+.big-emoji-disp { font-size: 3.5rem; display: block; margin-bottom: 6px; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+.big-gesture.active .big-emoji-disp { transform: scale(1.1); }
+.gesture-name { font-size: 1.1rem; font-weight: 800; color: var(--accent); }
+.gesture-sub { font-size: 0.7rem; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 4px; }
+
+.conf-label { font-size: 0.7rem; color: var(--muted); font-family: 'Space Mono', monospace; display: flex; justify-content: space-between; margin-bottom: 6px; }
+.conf-track { height: 5px; background: var(--border); border-radius: 100px; overflow: hidden; }
+.conf-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 100px; transition: width 0.5s ease; width: 0%; }
+
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.stat-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+.stat-val { font-size: 1.6rem; font-weight: 800; color: var(--accent); font-family: 'Space Mono', monospace; line-height: 1; }
+.stat-lbl { font-size: 0.65rem; color: var(--muted); margin-top: 3px; text-transform: uppercase; }
+
+/* Face panel */
+.face-card { background: rgba(124,58,237,0.06); border: 1px solid rgba(124,58,237,0.2); border-radius: 14px; padding: 16px; text-align: center; transition: all 0.3s; }
+.face-card.active { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.4); box-shadow: 0 0 20px rgba(124,58,237,0.15); }
+.face-emoji { font-size: 2.8rem; display: block; margin-bottom: 6px; }
+.face-name { font-size: 1rem; font-weight: 800; color: #a78bfa; }
+.face-sub { font-size: 0.7rem; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 3px; }
+
+/* History */
+.history-list { display: flex; flex-direction: column; gap: 5px; max-height: 150px; overflow-y: auto; }
+.history-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 7px; font-size: 0.8rem; animation: slideIn 0.3s ease; }
+.history-item:first-child { background: rgba(0,255,136,0.06); color: var(--accent); }
+@keyframes slideIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+.h-num { font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--muted); width:16px; }
+
+/* Guide */
+.guide-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-top: 14px; }
+.g-chip { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 10px 6px; text-align: center; transition: all 0.2s; cursor: default; }
+.g-chip:hover { background: rgba(0,255,136,0.06); border-color: rgba(0,255,136,0.2); transform: translateY(-2px); }
+.g-chip .ge { font-size: 1.6rem; display: block; }
+.g-chip .gn { font-size: 0.6rem; color: var(--muted); margin-top: 3px; }
+
+.bottom-row { margin-top: 16px; }
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Loading state */
+#loadingMsg { color: var(--accent); font-family: 'Space Mono', monospace; font-size: 0.8rem; text-align: center; padding: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🖐️</div>
+      <div>
+        <h1>Gesture & Face Expression System</h1>
+        <span>by Mahesh Bhardwaj — Real-time AI · No Install Required</span>
+      </div>
+    </div>
+    <div class="status-badge"><div class="status-dot"></div>LIVE</div>
+  </header>
+
+  <div class="main-grid">
+    <!-- Video -->
+    <div class="video-panel">
+      <div class="video-header">
+        <h2>📷 Camera Feed</h2>
+        <div class="fps-badge" id="fpsBadge">⚡ -- FPS</div>
+      </div>
+      <div class="video-wrapper">
+        <video id="videoEl" playsinline autoplay muted></video>
+        <canvas id="canvasEl"></canvas>
+        <div class="start-overlay" id="startOverlay">
+          <div class="big-emoji">🖐️</div>
+          <p>Click to start camera</p>
+          <button class="start-btn" onclick="startCamera()">Start Camera</button>
+          <p id="loadingMsg" style="display:none">Loading AI models...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right -->
+    <div class="right-panel">
+      <!-- Gesture -->
+      <div class="card">
+        <div class="panel-title">Hand Gesture</div>
+        <div class="big-gesture" id="gestureCard">
+          <span class="big-emoji-disp" id="gestureEmoji">🤔</span>
+          <div class="gesture-name" id="gestureName">Waiting...</div>
+          <div class="gesture-sub" id="gestureSub">Show hand to camera</div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="conf-label"><span>Confidence</span><span id="confVal">0%</span></div>
+          <div class="conf-track"><div class="conf-fill" id="confFill"></div></div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-val" id="handCount">0</div><div class="stat-lbl">Hands</div></div>
+          <div class="stat-card"><div class="stat-val" id="totalCount">0</div><div class="stat-lbl">Detected</div></div>
+        </div>
+      </div>
+
+      <!-- Face -->
+      <div class="card">
+        <div class="panel-title">Face Expression</div>
+        <div class="face-card" id="faceCard">
+          <span class="face-emoji" id="faceEmoji">😶</span>
+          <div class="face-name" id="faceName">No Face Detected</div>
+          <div class="face-sub" id="faceSub">Look at the camera</div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="card">
+        <div class="panel-title">Gesture History</div>
+        <div class="history-list" id="historyList">
+          <div style="color:var(--muted);font-size:0.75rem;text-align:center;padding:12px">No gestures yet 👋</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guide -->
+  <div class="bottom-row">
+    <div class="card">
+      <div class="panel-title">Gesture Reference Guide</div>
+      <div class="guide-grid">
+        <div class="g-chip"><span class="ge">✊</span><div class="gn">Fist</div></div>
+        <div class="g-chip"><span class="ge">🖐️</span><div class="gn">Open Hand</div></div>
+        <div class="g-chip"><span class="ge">👍</span><div class="gn">Thumbs Up</div></div>
+        <div class="g-chip"><span class="ge">👎</span><div class="gn">Thumbs Down</div></div>
+        <div class="g-chip"><span class="ge">✌️</span><div class="gn">Peace</div></div>
+        <div class="g-chip"><span class="ge">☝️</span><div class="gn">Point Up</div></div>
+        <div class="g-chip"><span class="ge">🤙</span><div class="gn">Call Me</div></div>
+        <div class="g-chip"><span class="ge">🤘</span><div class="gn">Rock On</div></div>
+        <div class="g-chip"><span class="ge">🤞</span><div class="gn">Three</div></div>
+        <div class="g-chip"><span class="ge">🖖</span><div class="gn">Four</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { HandLandmarker, FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+let handLandmarker, faceLandmarker, drawingUtils;
+let lastVideoTime = -1;
+let totalCount = 0, lastGesture = '';
+let history = [];
+let frameCount = 0, lastFpsTime = Date.now();
+
+const video = document.getElementById('videoEl');
+const canvas = document.getElementById('canvasEl');
+const ctx = canvas.getContext('2d');
+
+async function loadModels() {
+  document.getElementById('loadingMsg').style.display = 'block';
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
+  handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", delegate: "GPU" },
+    runningMode: "VIDEO", numHands: 2, minHandDetectionConfidence: 0.6, minHandPresenceConfidence: 0.6, minTrackingConfidence: 0.6
+  });
+  faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+    baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate: "GPU" },
+    runningMode: "VIDEO", numFaces: 1, minFaceDetectionConfidence: 0.5, minFacePresenceConfidence: 0.5, minTrackingConfidence: 0.5
+  });
+  drawingUtils = new DrawingUtils(ctx);
+}
+
+window.startCamera = async function() {
+  const overlay = document.getElementById('startOverlay');
+  document.querySelector('.start-btn').style.display = 'none';
+  document.getElementById('loadingMsg').style.display = 'block';
+  document.querySelector('.start-overlay p:first-of-type').style.display = 'none';
+  await loadModels();
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+  video.srcObject = stream;
+  video.addEventListener('loadeddata', () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.style.display = 'none', 400);
+    requestAnimationFrame(detectLoop);
+  });
+};
+
+function classifyGesture(landmarks) {
+  const lm = landmarks;
+  const wrist = lm[0], thumbTip = lm[4], indexMcp = lm[5], pinkyMcp = lm[17];
+  const isRight = indexMcp.x > pinkyMcp.x;
+  const wristY = wrist.y;
+  const thumbOpen = isRight ? thumbTip.x > indexMcp.x + 0.02 : thumbTip.x < indexMcp.x - 0.02;
+
+  const tips = [8,12,16,20], pips = [6,10,14,18];
+  const fingers = [thumbOpen ? 1 : 0];
+  for(let i=0;i<4;i++) fingers.push(lm[tips[i]].y < lm[pips[i]].y ? 1 : 0);
+  const total = fingers.reduce((a,b)=>a+b,0);
+  const othersCurled = fingers.slice(1).every(f=>f===0);
+
+  if(fingers[0]===1 && othersCurled && thumbTip.y < wristY - 0.1) return ["👍 Thumbs Up", 95];
+  if(fingers[0]===1 && othersCurled && thumbTip.y > wristY + 0.05) return ["👎 Thumbs Down", 95];
+  if(total===0) return ["✊ Fist", 95];
+  if(total===5) return ["🖐️ Open Hand", 95];
+  if(JSON.stringify(fingers)==='[0,1,1,0,0]') return ["✌️ Peace", 92];
+  if(JSON.stringify(fingers)==='[0,1,0,0,0]') return ["☝️ Pointing Up", 92];
+  if(JSON.stringify(fingers)==='[1,0,0,0,1]') return ["🤙 Call Me", 90];
+  if(JSON.stringify(fingers)==='[1,1,0,0,1]') return ["🤘 Rock On", 90];
+  if(JSON.stringify(fingers)==='[0,1,1,1,0]') return ["🤟 Three Middle", 85];
+  if(JSON.stringify(fingers)==='[1,1,1,0,0]') return ["🤞 Three Fingers", 85];
+  if(JSON.stringify(fingers)==='[0,1,1,1,1]') return ["🖖 Four Fingers", 85];
+  if(total===1) return ["☝️ One Finger", 78];
+  if(total===2) return ["✌️ Two Fingers", 78];
+  if(total===3) return ["🤟 Three Fingers", 78];
+  if(total===4) return ["🖖 Four Fingers", 78];
+  return ["🤔 Unknown", 60];
+}
+
+const EMOTIONS = {happy:"😄 Happy",sad:"😢 Sad",angry:"😠 Angry",surprise:"😲 Surprised",fear:"😨 Fearful",disgust:"🤢 Disgusted",neutral:"😐 Neutral"};
+
+function detectExpression(faceLm) {
+  const lm = faceLm;
+  const h = canvas.height, w = canvas.width;
+  const mouthOpen = Math.abs(lm[13].y - lm[14].y) * h;
+  const leftCorner = lm[61], rightCorner = lm[291];
+  const mouthCenterY = (lm[13].y + lm[14].y) / 2;
+  const smileScore = ((mouthCenterY - leftCorner.y) + (mouthCenterY - rightCorner.y)) * h;
+  const leftBrowEye = (lm[159].y - lm[70].y) * h;
+  const rightBrowEye = (lm[386].y - lm[300].y) * h;
+  const browRaise = -(leftBrowEye + rightBrowEye) / 2;
+
+  if(smileScore > 8 && mouthOpen > 8) return ["😄 Happy", 90];
+  if(smileScore > 5) return ["🙂 Happy", 78];
+  if(mouthOpen > 15 && browRaise > 3) return ["😲 Surprised", 82];
+  if(browRaise > 4) return ["😲 Surprised", 75];
+  if(smileScore < -4) return ["😢 Sad", 72];
+  if(leftBrowEye < 12 && rightBrowEye < 12) return ["😠 Angry", 70];
+  return ["😐 Neutral", 82];
+}
+
+function detectLoop() {
+  if(video.currentTime !== lastVideoTime) {
+    lastVideoTime = video.currentTime;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const now = Date.now();
+    frameCount++;
+    if(now - lastFpsTime >= 1000) {
+      document.getElementById('fpsBadge').textContent = `⚡ ${frameCount} FPS`;
+      frameCount = 0; lastFpsTime = now;
+    }
+
+    // Detect hands
+    const handResult = handLandmarker.detectForVideo(video, now);
+    // Detect face
+    const faceResult = faceLandmarker.detectForVideo(video, now);
+
+    // Draw hands
+    let handCount = 0;
+    let detectedGesture = null;
+    if(handResult.landmarks && handResult.landmarks.length > 0) {
+      handCount = handResult.landmarks.length;
+      for(const lms of handResult.landmarks) {
+        drawingUtils.drawConnectors(lms, HandLandmarker.HAND_CONNECTIONS, {color:'#00ff88', lineWidth:2});
+        drawingUtils.drawLandmarks(lms, {color:'#ffffff', lineWidth:1, radius:3});
+        const [gesture, conf] = classifyGesture(lms);
+        detectedGesture = [gesture, conf];
+      }
+    }
+
+    // Update gesture UI
+    if(detectedGesture) {
+      const [gesture, conf] = detectedGesture;
+      const parts = gesture.split(' ');
+      const emoji = parts[0];
+      const name = parts.slice(1).join(' ');
+      document.getElementById('gestureEmoji').textContent = emoji;
+      document.getElementById('gestureName').textContent = name;
+      document.getElementById('gestureSub').textContent = `Confidence: ${conf}%`;
+      document.getElementById('gestureCard').classList.add('active');
+      document.getElementById('confVal').textContent = `${conf}%`;
+      document.getElementById('confFill').style.width = `${conf}%`;
+      if(gesture !== lastGesture) {
+        lastGesture = gesture;
+        totalCount++;
+        document.getElementById('totalCount').textContent = totalCount;
+        history.unshift(gesture);
+        history = history.slice(0,10);
+        document.getElementById('historyList').innerHTML = history.map((g,i)=>`
+          <div class="history-item">
+            <span class="h-num">${String(i+1).padStart(2,'0')}</span>
+            <span>${g}</span>
+          </div>`).join('');
+      }
+    } else {
+      document.getElementById('gestureEmoji').textContent = '👋';
+      document.getElementById('gestureName').textContent = 'No Hand Detected';
+      document.getElementById('gestureSub').textContent = 'Show your hand to the camera';
+      document.getElementById('gestureCard').classList.remove('active');
+      document.getElementById('confVal').textContent = '0%';
+      document.getElementById('confFill').style.width = '0%';
+      lastGesture = '';
+    }
+    document.getElementById('handCount').textContent = handCount;
+
+    // Face
+    if(faceResult.faceLandmarks && faceResult.faceLandmarks.length > 0) {
+      const [expr, conf] = detectExpression(faceResult.faceLandmarks[0]);
+      const parts = expr.split(' ');
+      document.getElementById('faceEmoji').textContent = parts[0];
+      document.getElementById('faceName').textContent = parts.slice(1).join(' ');
+      document.getElementById('faceSub').textContent = `Confidence: ${conf}%`;
+      document.getElementById('faceCard').classList.add('active');
+    } else {
+      document.getElementById('faceEmoji').textContent = '😶';
+      document.getElementById('faceName').textContent = 'No Face Detected';
+      document.getElementById('faceSub').textContent = 'Look at the camera';
+      document.getElementById('faceCard').classList.remove('active');
+    }
+  }
+  requestAnimationFrame(detectLoop);
+}
+</script>
+</body>
+</html>
